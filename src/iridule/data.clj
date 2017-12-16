@@ -3,6 +3,7 @@
   (:import [com.google.common.collect TreeMultimap]
            [java.util Comparator]))
 
+
 (defn delimiter?
   "Detects the delimiter used in supplied row."
   [row]
@@ -11,16 +12,18 @@
     (index-of row ",") ", "
     :else " "))
 
-(defn lines->kv [delim lines]
+(defn lines->kv [extract-fn delim lines]
   (for [line lines
-        :let [vals (split line delim)]]
-          [(first vals) vals]))
+        :let [vals (zipmap [:lastname :firstname :gender :fav-color :birthdate]
+                           (split line delim))]]
+          [(extract-fn vals) vals]))
 
 (defn create-multimap!
-  "Creates a TreeMultimap, having the property that entries are maintained in order (using the supplies comparator) on insertion."
+  "Creates a TreeMultimap, having the property that entries are maintained in order (using
+  the supplied comparator) on insertion."
   [^Comparator key-comparator]
   (TreeMultimap/create key-comparator (constantly 1)))
 
-(defn index-records! [tm delim lines]
-  (doseq [[k v] (lines->kv (re-pattern delim) lines)]
+(defn index-records! [tm extract-fn delim lines]
+  (doseq [[k v] (lines->kv extract-fn (re-pattern delim) lines)]
     (.put tm k v)))
