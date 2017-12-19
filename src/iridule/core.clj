@@ -16,11 +16,13 @@
 (defn render-index!
   "Print the values in a given index (specified by keyword)."
   [k-idx]
-  (doseq [v (.values (get @index k-idx))]
-    (->> (update v :birthdate render-date)
-         vals
-         (clojure.string/join ",")
-         println)))
+  (let [tm (get @index k-idx)]
+    (locking tm
+      (doseq [v (.values tm)]
+        (->> (update v :birthdate render-date)
+             vals
+             (clojure.string/join ",")
+             println)))))
 
 (defn index!
   "Given a list of files and a destination index, perform the indexing."
@@ -46,8 +48,7 @@
                  wrap-json-params))
 
 (defn -main [& files]
-  ; read files specified from cmdline, parse and index
-  ; parallelized/one core per index (as multimap is not thread-safe)
+  ; read files specified from cmdline, parse and index. (parallelized)
   (doall (pmap (partial index! files) index->extract-fn))
 
   ; render output(s)

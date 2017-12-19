@@ -34,17 +34,20 @@
 
     (testing "multimap maintains order with last name desc index"
       (let [db (create-multimap! (comp - compare))]
-        (doseq [line lines]
-          (index-record! db :lastname #", " line))
-        (is (= ["Lovelace" "Cantor" "Armstrong" "Armstrong"]
-               (map :lastname (.values db))))))
+        (locking db
+          (doseq [line lines]
+            (index-record! db :lastname #", " line))
+          (is (= ["Lovelace" "Cantor" "Armstrong" "Armstrong"]
+                 (map :lastname (.values db)))))))
 
     (testing "multimap maintains order with gender asc / last name asc index"
       (let [db (create-multimap! compare)]
-        (doseq [line lines]
-          (index-record! db #(identity [(:gender %) (:lastname %)]) #", " line))
-        (is (= ["Lovelace" "Armstrong" "Armstrong" "Cantor"]
-               (map :lastname (.values db))))))))
+        (locking db
+          (doseq [line lines]
+            (index-record! db
+                           #(identity [(:gender %) (:lastname %)]) #", " line))
+          (is (= ["Lovelace" "Armstrong" "Armstrong" "Cantor"]
+                 (map :lastname (.values db)))))))))
 
 (deftest parse-and-render-date-test
   (testing "YYYY-MM-DD is parsed and rendered as  M/D/YYYY"

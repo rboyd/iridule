@@ -1,7 +1,7 @@
 (ns iridule.data
   (:require [clojure.string :refer [index-of split]]
             [clj-time.format :refer [parse unparse formatter formatters]])
-  (:import [com.google.common.collect TreeMultimap]
+  (:import [com.google.common.collect TreeMultimap Multimaps]
            [java.util Comparator]))
 
 
@@ -44,7 +44,8 @@
   "Creates a TreeMultimap, having the property that entries are maintained in
   order (using the supplied comparator) on insertion."
   [^Comparator key-comparator]
-  (TreeMultimap/create key-comparator (constantly 1)))
+  (Multimaps/synchronizedSortedSetMultimap
+   (TreeMultimap/create key-comparator (constantly 1))))
 
 (defn index-record! [tm extract-key-fn delim line]
   (let [[k v] (line->kv extract-key-fn delim line)]

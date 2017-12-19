@@ -6,8 +6,10 @@
             [ring.util.response :refer [response]]))
 
 (defn records [app-state index]
-  (->> (.values (get app-state index))
-       (map #(update % :birthdate render-date))))
+  (let [tm (get app-state index)]
+    (locking tm
+      (->> (.values tm)
+           (map #(update % :birthdate render-date))))))
 
 (defroutes app
   (POST "/records" [:as request]
