@@ -13,4 +13,10 @@
                                   [faker "0.3.2"]
                                   [ring/ring-mock "0.3.2"]
                                   [cheshire "5.8.0"]]}}
+  :aliases {"docs" ["marg"
+                    "-ddoc"
+                    "-firidule.html"
+                    "src/iridule/core.clj"
+                    "src/iridule/data.clj"
+                    "src/iridule/handler.clj"]}
   :main iridule.core)

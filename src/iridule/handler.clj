@@ -3,15 +3,20 @@
                                   line->delimiter]]
             [compojure.core :refer :all]
             [compojure.route :as route]
-            [ring.util.response :refer [response]]))
+            [ring.util.response :refer [response file-response]]))
 
-(defn records [app-state index]
+(defn records
+  "Render records from an index, replacing birthdate with preferred format."
+  [app-state index]
   (let [tm (get app-state index)]
     (locking tm
       (->> (.values tm)
            (map #(update % :birthdate render-date))))))
 
 (defroutes app
+  "The routes for our handler."
+  (GET "/" []
+       (file-response "iridule.html" {:root "doc"}))
   (POST "/records" [:as request]
         (let [line (get-in request [:params :line])
               delim (re-pattern (line->delimiter line))]

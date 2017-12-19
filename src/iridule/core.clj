@@ -1,3 +1,11 @@
+;; *The iridule–when, beautiful and strange,*  
+;; *In a bright sky above a mountain range*  
+;; *One opal cloudlet in an oval form*  
+;; *Reflects the rainbow of a thunderstorm*  
+;; *Which in a distant valley has been staged*  
+;; *For we are most artistically caged.*
+;;
+;; *- Vladimir Nabokov*
 (ns iridule.core
   (:require [iridule.data :refer [line->delimiter create-multimap! render-date
                                   index-record! index->extract-fn]]
@@ -8,13 +16,26 @@
   (:gen-class))
 
 
-; application state
+;; The application state. We use three separate indices:
+;;
+;;   * :gender-lastname - sorted by gender (females before males) then by last
+;;       name ascending
+;;   * :birthdate - sorted by birth date, ascending
+;;   * :lastname - sorted by last name, descending
+;;
+;; These indices are Google Guava [TreeMultimap][1]s under the hood. They
+;; are maintained in sorted state, paying the cost of the sort on insert instead
+;; of each time the user wants to display the items within.
+;;
+;; The parameter (a Comparator) supplied to create-multimap! determines its sort order.
+;;
+;; [1]: https://google.github.io/guava/releases/23.0/api/docs/com/google/common/collect/TreeMultimap.html
 (def index (atom {:gender-lastname (create-multimap! compare)
                   :birthdate (create-multimap! compare)
                   :lastname (create-multimap! (comp - compare))}))
 
 (defn render-index!
-  "Print the values in a given index (specified by keyword)."
+  "Print the values in a given index (specified by keyword) to stdout."
   [k-idx]
   (let [tm (get @index k-idx)]
     (locking tm
@@ -25,7 +46,8 @@
              println)))))
 
 (defn index!
-  "Given a list of files and a destination index, perform the indexing."
+  "Given a list of files along with a destination index and extraction function,
+  perform the indexing."
   [files [k-idx extract-fn]]
   (doseq [file files]
     (with-open [rdr (clojure.java.io/reader file)]
@@ -36,17 +58,23 @@
           (index-record! (get @index k-idx) extract-fn delim line))))))
 
 (defn app-middleware
-  "Make index available to ring handler in :app-state"
+  "Make indices available to ring handler in :app-state"
   [f state]
   (fn [request]
     (f (assoc request :app-state state))))
 
+;; Our ring handler, with some ceremony to accept and return json.
 (def handler (-> app
                  (app-middleware index)
                  wrap-keyword-params
                  wrap-json-response
                  wrap-json-params))
 
+;; The entrypoint to our program.
+;;   * Accepts any number of filenames as command line args
+;;   * Indexes the lines in each
+;;   * Prints the records from each index to stdout
+;;   * Starts a ring server to expose our HTTP API
 (defn -main [& files]
   ; read files specified from cmdline, parse and index. (parallelized)
   (doall (pmap (partial index! files) index->extract-fn))
@@ -57,5 +85,6 @@
                       [:gender-lastname :birthdate :lastname]))
 
   ; start web server
-  (serve handler {:port 3000})
+  (binding [*out* *err*]
+    (serve handler {:port 3000}))
   (shutdown-agents))
