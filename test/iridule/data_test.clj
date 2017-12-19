@@ -1,7 +1,7 @@
 (ns iridule.data-test
   (:require [clojure.test :refer :all]
-            [iridule.data :refer [delimiter? create-multimap! index-records!
-                                  parse-date line->kv]]
+            [iridule.data :refer [line->delimiter create-multimap! index-record!
+                                  parse-date render-date line->kv]]
             [faker.name :refer [last-name first-name]]
             [clojure.data.generators :refer [date]]
             [clj-time.coerce :refer [from-date]]
@@ -19,9 +19,12 @@
                                            (from-date (date)))]))
 
 (deftest detect-test
-  (doseq [delim [" | " ", " " "]]
-    (testing (str "Detects '" delim "' as the row's delimiter") 
-      (is (= delim (delimiter? (gen-row delim)))))))
+  (let [delimiter-map {" | ", " \\| "
+                       ", ",  ", "
+                       " ",   " "}]
+    (doseq [delim (keys delimiter-map)]
+      (testing (str "Detects '" delim "' as the row's delimiter")
+        (is (= (get delimiter-map delim) (line->delimiter (gen-row delim))))))))
 
 (deftest maintains-order-test
   (let [lines ["Lovelace, Ada, F, Violet, 1815-12-10"
@@ -29,21 +32,23 @@
                "Cantor, Georg, M, Blue, 1845-03-03"
                "Armstrong, Neil, M, Red, 1930-08-05"]]
 
-    (testing "multimap maintains order with last name desc index."
+    (testing "multimap maintains order with last name desc index"
       (let [db (create-multimap! (comp - compare))]
-        (index-records! db :lastname #", " lines)
+        (doseq [line lines]
+          (index-record! db :lastname #", " line))
         (is (= ["Lovelace" "Cantor" "Armstrong" "Armstrong"]
                (map :lastname (.values db))))))
 
-    (testing "multimap maintains order with gender asc / last name asc index."
+    (testing "multimap maintains order with gender asc / last name asc index"
       (let [db (create-multimap! compare)]
-        (index-records! db #(identity [(:gender %) (:lastname %)]) #", " lines)
+        (doseq [line lines]
+          (index-record! db #(identity [(:gender %) (:lastname %)]) #", " line))
         (is (= ["Lovelace" "Armstrong" "Armstrong" "Cantor"]
                (map :lastname (.values db))))))))
 
-(deftest parse-date-test
-  (testing "YYYY-MM-DD is parsed into M/D/YYYY"
-    (is (= "8/5/1930" (parse-date "1930-08-05")))))
+(deftest parse-and-render-date-test
+  (testing "YYYY-MM-DD is parsed and rendered as  M/D/YYYY"
+    (is (= "8/5/1930" (render-date (parse-date "1930-08-05"))))))
 
 (deftest line->kv-test
   (testing "parses line into expected key/value pair"
@@ -51,5 +56,5 @@
                         :firstname "Ada"
                         :gender "F"
                         :fav-color "Violet"
-                        :birthdate "1815-12-10"}]
+                        :birthdate (parse-date "1815-12-10")}]
            (line->kv :lastname #", " "Lovelace, Ada, F, Violet, 1815-12-10")))))
