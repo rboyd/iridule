@@ -15,21 +15,25 @@
          (clojure.string/join ",")
          println)))
 
-(defn -main [& files]
-  ; read files specified from cmdline, parse and index
+(defn index! [files [k-idx extract-fn]]
   (doseq [file files]
     (with-open [rdr (clojure.java.io/reader file)]
       (let [lines (line-seq rdr)
             first-line (first lines)
             delim (re-pattern (line->delimiter first-line))]
         (doseq [line lines]
-          (doseq [[k-idx extract-fn] [[:gender-lastname
-                                       #(identity [(:gender %) (:lastname %)])]
-                                      [:birthdate :birthdate]
-                                      [:lastname :lastname]]]
-            (index-record! (get @index k-idx) extract-fn delim line))))))
+          (index-record! (get @index k-idx) extract-fn delim line))))))
+
+(defn -main [& files]
+  ; read files specified from cmdline, parse and index
+  ; parallelized/one core per index (as multimap is not thread-safe)
+  (doall (pmap (partial index! files) [[:gender-lastname
+                                        #(identity [(:gender %) (:lastname %)])]
+                                       [:birthdate :birthdate]
+                                       [:lastname :lastname]]))
 
   ; render output(s)
   (doall (map-indexed #(do (println "Output" (inc %1))
                            (render-index! %2))
-                      [:gender-lastname :birthdate :lastname])))
+                      [:gender-lastname :birthdate :lastname]))
+  (shutdown-agents))
