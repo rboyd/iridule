@@ -5,6 +5,11 @@
            [java.util Comparator]))
 
 
+(def index->extract-fn [[:gender-lastname
+                         #(identity [(:gender %) (:lastname %)])]
+                        [:birthdate :birthdate]
+                        [:lastname :lastname]])
+
 (defn line->delimiter
   "Detects and returns the delimiter used in the given line."
   [line]
